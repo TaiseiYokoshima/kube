@@ -4,4 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio
+tokio = { version = "1.47.1", features =  ["full"] } 
+k8s-openapi = { version = "0.25", features = ["v1_33"] }
