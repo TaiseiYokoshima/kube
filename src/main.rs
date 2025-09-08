@@ -1,3 +1,10 @@
+use reqwest;
+
+use std::env;
+
 fn main() {
-    println!("Hello, world!");
+   let user = env::var("USER").expect("Could not find user environment variable");
+
+   
+   println!("{:?}", user);
 }

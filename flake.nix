@@ -22,6 +22,7 @@
                buildInputs = with pkgs; [
                   openssl
                   pkg-config
+                  rustup
                ];
 
                shellHook = ''
