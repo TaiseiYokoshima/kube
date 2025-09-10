@@ -93,7 +93,9 @@ async fn main() {
    };
 
    let client = Client::builder()
-      .use_rustls_tls()
+      .use_rustls_tls() // without this, it didnt use rustls and identity would fail
+                                      // because identity provided here is not compatible with
+                                      // native-tls
       .add_root_certificate(cert)
       .identity(ident)
       .build()
