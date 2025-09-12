@@ -591,6 +591,7 @@ dependencies = [
  "base64",
  "k8s-openapi",
  "openssl",
+ "openssl-sys",
  "reqwest",
  "serde",
  "serde_yaml",

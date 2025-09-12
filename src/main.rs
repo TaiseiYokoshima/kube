@@ -101,7 +101,6 @@ async fn main() {
       .build()
       .unwrap();
 
-
    let url = format!("{}/api/v1/namespaces/default/pods", host);
 
    let response = client
