@@ -1,4 +1,19 @@
+mod k8s_client;
+mod metrics_collector;
+
+
+mod initialization;
+
+
+use metrics_collector::extract_cpu_metrics;
+
+
+use crate::k8s_client::K8SClient;
+use futures_util::StreamExt;
 use reqwest::{Certificate, Client, Identity};
+use tokio_util::codec::{FramedRead, LinesCodec};
+
+use k8s_openapi::{api::core::v1::Node, apimachinery::pkg::apis::meta::v1::WatchEvent, serde_json, List};
 
 fn read_config() -> (String, String, String, String) {
    use serde_yaml::Value;
@@ -83,8 +98,7 @@ fn generate_creds(
    (ca_cert, identity)
 }
 
-#[tokio::main]
-async fn main() {
+fn get_client() -> K8SClient {
    let (host, cert, ident) = {
       let (host, ca_cert, client_cert, client_key) = read_config();
       let (cert, ident) = generate_creds(ca_cert, client_cert, client_key);
@@ -93,22 +107,109 @@ async fn main() {
    };
 
    let client = Client::builder()
-      .use_rustls_tls() // without this, it didnt use rustls and identity would fail
-                                      // because identity provided here is not compatible with
-                                      // native-tls
+      .use_rustls_tls()
+      // without this, it didnt use rustls and identity would fail
+      // because identity provided here is not compatible with
+      // native-tls
       .add_root_certificate(cert)
       .identity(ident)
       .build()
       .unwrap();
 
-   let url = format!("{}/api/v1/namespaces/default/pods", host);
+   K8SClient::new(client, host)
+}
 
-   let response = client
-      .get(url)
-      .send()
-      .await
-      .unwrap();
+async fn get_nodes(client: K8SClient) {
+   let url = "/api/v1/nodes";
+   let response = client.get(url).send().await.unwrap();
+   let nodes_list = response.json::<List<Node>>().await.unwrap();
+   let node = nodes_list.items.get(1).unwrap();
+   let data = &node.metadata;
+   let option = &data.name;
+   println!("{:?}", data.name);
+}
 
-   let text = response.text().await.unwrap();
-   println!("{}", text);
+async fn get_nodes_latest_resource_version(client: &K8SClient) -> String {
+   let url = "/api/v1/nodes";
+   let response = client.get(url).send().await.unwrap();
+   let nodes_list = response.json::<List<Node>>().await.unwrap();
+   nodes_list.metadata.resource_version.unwrap()
+}
+
+
+
+
+async fn watch_nodes(client: K8SClient, version: String) {
+   let mut lines = {
+      let url = format!("/api/v1/watch/nodes?resourceVersion={}", version);
+      let stream = client
+         .get(url)
+         .send()
+         .await
+         .unwrap()
+         .bytes_stream()
+         .map(|b| b.map_err(std::io::Error::other));
+
+      let reader = tokio_util::io::StreamReader::new(stream);
+      FramedRead::new(reader, LinesCodec::new())
+   };
+
+   while let Some(line) = lines.next().await {
+      let line = line.expect("no line");
+      let event: WatchEvent<Node> = serde_json::from_str(&line).unwrap();
+
+      match event {
+         WatchEvent::Added(node) => {
+
+            let conditions = &node.status.unwrap().conditions.unwrap();
+            let status = &conditions.iter().find(|c| c.type_ == "Ready").unwrap().status.to_lowercase().parse::<bool>().unwrap();
+            println!("`{}` created | ready: {}", node.metadata.name.unwrap(), status);
+            // println!("{:?}", node.)
+
+         },
+         WatchEvent::Deleted(node) => {
+            println!("`{}` deleted", node.metadata.name.unwrap());
+
+         },
+         WatchEvent::Modified(node) => {
+            println!("`{}` modified", node.metadata.name.unwrap());
+         },
+
+         other => {
+            println!("other: {:?}", other);
+         }
+
+      }
+
+   }
+
+   println!("no more events");
+}
+
+
+static DEPLOYMENT: &'static str = "stress-test";
+
+#[tokio::main]
+async fn main() {
+   use initialization::ReplicaSetTarget;
+
+   let client = get_client();
+
+   let deployment_uuid = initialization::get_deployment_uuid(&client, "default", DEPLOYMENT).await;
+   let replicaset = initialization::get_replicaset(&client, "default", &deployment_uuid).await;
+
+   let pods = initialization::get_pods_uids(&client, &replicaset.pod_template_hash).await;
+
+
+   // println!("replicaset {replicaset:?}");
+   // println!("uuid: {deployment_uuid}");
+   return
+
+
+   // let version = get_nodes_latest_resource_version(&client).await;
+
+
+
+   // watch_nodes(client, version).await;
+
 }

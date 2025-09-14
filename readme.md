@@ -24,3 +24,15 @@ use default kind cluster creation:
 now using k3d:
 you can add or remove nodes at runtime (after cluster initialization)
 metrics server and hpa works but for hpa you have to use the older api version
+
+
+cardamon plan:
+1. get deployment name from Cardamon.toml
+2. query deployment (depl) uid.
+3. get the replicaset via depl uid
+4. get the pod-hash from the replicaset
+5. watch the replicaset for pods count
+6. one task watches replicaset to add or remove pods, one thread reads node sumarry, one thread filters the summary via the pods dsa
+7. for each node there would be 2 tasks. One to query and get the string, and another to filter out the necessary cpu metrics
+8. one task to gather all the metrics produced by each node and sum it and collect it into a buffer
+9. each round of query is synchronized by a signal
