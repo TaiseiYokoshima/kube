@@ -1,10 +1,11 @@
-use crate::K8SClient;
+use std::sync::Arc;
+use crate::client::KubeClient;
 
 pub async fn get_deployment_uuid(
-   client: &K8SClient,
+   client: &KubeClient,
    namespace: &str,
    deployment_name: &str,
-) -> String {
+) -> Arc<str> {
    use k8s_openapi::api::apps::v1::Deployment;
 
    let endpoint = format!(
@@ -20,5 +21,5 @@ pub async fn get_deployment_uuid(
       .unwrap();
    let deployment = response.json::<Deployment>().await.unwrap();
 
-   deployment.metadata.uid.unwrap()
+   deployment.metadata.uid.unwrap().into()
 }

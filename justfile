@@ -12,3 +12,7 @@ deploy:
    @kubectl get --raw /apis/apps/v1/namespaces/default/deployments/stress-test | jq -r ".metadata.uid"
 
 
+metric:
+   @kubectl get --raw /api/v1/nodes/k3d-mycluster-agent-1/proxy/stats/summary
+
+

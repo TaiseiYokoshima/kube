@@ -1,19 +1,11 @@
-use crate::K8SClient;
-
-#[derive(Debug)]
-pub struct ReplicaSetTarget {
-   pub uid: Box<str>,
-   pub name: Box<str>,
-   pub app: Box<str>,
-   pub pod_template_hash: Box<str>,
-}
+use crate::client::KubeClient;
 
 pub async fn get_replicaset(
-   client: &K8SClient,
+   client: &KubeClient,
    namespace: &str,
-   deployment_uuid: &str,
+   deployment_uid: &str,
 ) 
-   -> ReplicaSetTarget 
+   -> Box<str>
 {
    use k8s_openapi::{List, api::apps::v1::ReplicaSet};
 
@@ -33,7 +25,7 @@ pub async fn get_replicaset(
    for set in replica_sets.items {
       let owners = set.metadata.owner_references.as_ref().unwrap();
       for owner in owners {
-         if owner.uid == deployment_uuid && owner.controller.unwrap() {
+         if owner.uid == deployment_uid && owner.controller.unwrap() {
             replica_set = Some(set);
             break;
          };
@@ -41,18 +33,10 @@ pub async fn get_replicaset(
    }
 
    let replica_set = replica_set.expect(&format!(
-      "no replica set found for the deployment {deployment_uuid}"
+      "no replica set found for the deployment {deployment_uid}"
    ));
 
-   let uid = replica_set.metadata.uid.as_ref().unwrap();
-   let name = replica_set.metadata.name.as_ref().unwrap();
-   let app = replica_set
-      .metadata
-      .labels
-      .as_ref()
-      .unwrap()
-      .get("app")
-      .unwrap();
+
    let pod_template_hash = replica_set
       .metadata
       .labels
@@ -61,10 +45,5 @@ pub async fn get_replicaset(
       .get("pod-template-hash")
       .unwrap();
 
-   ReplicaSetTarget {
-      uid: uid.clone().into(),
-      name: name.clone().into(),
-      app: app.clone().into(),
-      pod_template_hash: pod_template_hash.clone().into(),
-   }
+   pod_template_hash.clone().into()
 }

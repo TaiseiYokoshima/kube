@@ -36,3 +36,12 @@ cardamon plan:
 7. for each node there would be 2 tasks. One to query and get the string, and another to filter out the necessary cpu metrics
 8. one task to gather all the metrics produced by each node and sum it and collect it into a buffer
 9. each round of query is synchronized by a signal
+
+
+get deployment ids
+get all replicasets and their template hash
+
+
+set up watchers per hash
+set up watchers on deployment to spawn more replica watchers
+
