@@ -639,7 +639,9 @@ name = "kube"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "bytes",
  "futures",
+ "futures-core",
  "futures-util",
  "k8s-openapi",
  "openssl",

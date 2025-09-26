@@ -1,11 +1,9 @@
-use std::{rc::Rc, sync::Arc};
-
-use super::ClientError;
-
+use std::rc::Rc;
+use super::{ClientError, ReplicaSets, Nodes, Pods};
 
 #[derive(Debug, Clone)]
 pub struct Base {
-   host: Box<str>,
+   pub host: Box<str>,
    client: reqwest::Client,
 }
 
@@ -24,18 +22,44 @@ pub struct Get {
 }
 
 impl Get {
-   // pub async fn get_nodes(&self) -> Result<(Vec<Arc<str>>, Vec<bool>, Box<str>), ClientError> {
-   //    use super::get_nodes;
-   //    get_nodes::get_nodes(&self.client).await
-   // }
+   pub async fn nodes(&self) -> Result<Nodes, ClientError> {
+      use super::get_nodes;
+      let client = &self.client;
+      get_nodes::get_nodes(client).await
+   }
+   
+   pub async fn replica_sets(&self, targets: &Vec<Target>) -> Result<ReplicaSets, ClientError> {
+      use super::get_replicasets::get_replica_sets;
+      let client = &self.client;
+      get_replica_sets(client, targets).await
+   }
+
+
+   pub async fn pods(&self, replica_sets: &ReplicaSets) -> Result<Pods, ClientError> {
+      use super::get_pods::get_pods;
+
+      let client: &Base = &self.client;
+      get_pods(client, replica_sets).await
+   }
 }
 
 #[derive(Debug, Clone)]
 pub struct Watch {
-   client: Rc<Base>,
+   pub client: Rc<Base>,
 }
 
-impl Watch {}
+
+use super::watchers::{Watcher, ReplicaSetEvent};
+use k8s_openapi::api::apps::v1::ReplicaSet;
+
+use std::time::Duration;
+
+impl Watch {
+   pub fn replica_sets(&self, targets: Vec<Target>, replica_sets: ReplicaSets, timeout: Duration) -> Watcher<ReplicaSet, ReplicaSetEvent> {
+      let client = (*self.client).clone();
+      Watcher::new(client, replica_sets, targets, timeout)
+   }
+}
 
 #[derive(Debug, Clone)]
 pub struct Validate {
@@ -45,21 +69,6 @@ pub struct Validate {
 use super::{TargetInput, Target};
 
 impl Validate {
-   // pub async fn namespaces(
-   //    client: &Rc<Base>,
-   //    namespaces_to_check: impl Iterator<Item = &str>,
-   // ) -> Result<Vec<bool>, ClientError> {
-   //    use super::validate_namespace::validate_namespaces;
-   //    validate_namespaces(client, namespaces_to_check).await
-   // }
-   //
-   // pub async fn deployments(
-   //    client: &Rc<Base>,
-   //    deployments_to_check: impl Iterator<Item = (&str, &str)>,
-   // ) -> Result<Vec<bool>, ClientError> {
-   //    todo!()
-   // }
-
    pub async fn targets(
        &self,
       targets: Vec<TargetInput>,
@@ -67,7 +76,7 @@ impl Validate {
 
       let client = &self.client;
 
-      use super::validate_target::validate_targets;
+      use super::validate_targets::validate_targets;
       let result = validate_targets(client, targets).await?;
 
       match result {

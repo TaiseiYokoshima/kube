@@ -3,7 +3,7 @@ use std::rc::Rc;
 use super::ClientError;
 use super::client::Base;
 use super::{Target, TargetInput};
-use super::{Kind, TargetError};
+use super::{ErrorKind, TargetError};
 
 use k8s_openapi::{
    List, 
@@ -94,7 +94,7 @@ fn validate_input_target(
          if !error_indicies.is_empty() {
             let error = TargetError {
                target: target,
-               kind: Kind::Containers(error_indicies),
+               kind: ErrorKind::Containers(error_indicies),
             };
 
             return Ok(Err(error));
@@ -130,14 +130,14 @@ fn validate_input_target(
 
    let error = if found_namespace {
       let error = TargetError {
-         kind: Kind::Deployment,
+         kind: ErrorKind::Deployment,
          target: target,
       };
 
       Ok(Err(error))
    } else {
       let error = TargetError {
-         kind: Kind::Namespace,
+         kind: ErrorKind::Namespace,
          target: target,
       };
 

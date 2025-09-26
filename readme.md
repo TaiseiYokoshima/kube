@@ -45,3 +45,16 @@ get all replicasets and their template hash
 set up watchers per hash
 set up watchers on deployment to spawn more replica watchers
 
+
+
+
+### components you are interested in for watching
+
+nodes:
+status
+
+replica set:
+pods count
+
+pods:
+()

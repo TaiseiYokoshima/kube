@@ -1,194 +1,121 @@
-use futures_util::StreamExt;
-use reqwest::Client;
-use k8s_openapi::{api::core::v1::Node, apimachinery::pkg::apis::meta::v1::WatchEvent, List};
-
-
 use kube::client::KubeClient;
-use kube::config::{read_config, generate_creds};
-// use kube::initialization;
 
+use std::rc::Rc;
+use std::time::Duration;
 
-// fn get_client() -> KubeClient {
-//    let (host, cert, ident) = {
-//       let (host, ca_cert, client_cert, client_key) = read_config();
-//       let (cert, ident) = generate_creds(ca_cert, client_cert, client_key);
-//
-//       (host, cert, ident)
-//    };
-//
-//    let client = Client::builder()
-//       .use_rustls_tls()
-//       // without this, it didnt use rustls and identity would fail
-//       // because identity provided here is not compatible with
-//       // native-tls
-//       .add_root_certificate(cert)
-//       .identity(ident)
-//       .build()
-//       .unwrap();
-//
-//    KubeClient::new(client, host)
-// }
+use kube::client::Base;
+use kube::client::ClientError;
 
-// fn get_client() -> (reqwest::Client, String) {
-//    let (host, cert, ident) = {
-//       let (host, ca_cert, client_cert, client_key) = read_config();
-//       let (cert, ident) = generate_creds(ca_cert, client_cert, client_key);
-//
-//       (host, cert, ident)
-//    };
-//
-//    let client = Client::builder()
-//       .use_rustls_tls()
-//       // without this, it didnt use rustls and identity would fail
-//       // because identity provided here is not compatible with
-//       // native-tls
-//       .add_root_certificate(cert)
-//       .identity(ident)
-//       .build()
-//       .unwrap();
-//
-//    (client, host)
-//
-// }
+use k8s_openapi::api::apps::v1::ReplicaSet;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::WatchEvent;
+
+use futures::stream::StreamExt;
+use tokio_util::codec::{FramedRead, LinesCodec};
 
 
 
 
+async fn watch_nodes(client: &Rc<Base>, version: &Box<str>) -> Result<(), ClientError> {
+   let mut lines = {
+      let url = format!(
+         "/apis/apps/v1/replicasets?watch=true&resourceVersion={}&timeoutSeconds=1000000000",
+         version
+      );
+      let stream = client
+         .get(url)
+         .send()
+         .await?
+         .error_for_status()?
+         .bytes_stream()
+         .map(|b| b.map_err(std::io::Error::other));
+
+      let reader = tokio_util::io::StreamReader::new(stream);
+      FramedRead::new(reader, LinesCodec::new())
+   };
+
+   while let Some(line) = lines.next().await {
+      match &line {
+         Err(e) => println!("Error:\n{}\n{:?}", e, e),
+         _ => (),
+      };
+
+      let line = line.unwrap();
+      let event: WatchEvent<ReplicaSet> = serde_json::from_str(&line).unwrap();
+
+      match event {
+         WatchEvent::Added(node) => {
+            println!("added");
+         }
+
+         WatchEvent::Deleted(node) => {
+            println!("deleted");
+         }
+
+         WatchEvent::Modified(node) => {
+            println!("{:?}", node.metadata.resource_version);
+            println!("modified");
+         }
+
+         other => {
+            println!("other: {:?}", other);
+         }
+      }
+   }
+
+   println!("no more events");
+
+   Ok(())
+}
 
 
-// async fn get_nodes(client: KubeClient) {
-//    let url = "/api/v1/nodes";
-//    let response = client.get(url).send().await.unwrap();
-//    let nodes_list = response.json::<List<Node>>().await.unwrap();
-//    let node = nodes_list.items.get(1).unwrap();
-//    let data = &node.metadata;
-//    let option = &data.name;
-//    println!("{:?}", data.name);
-// }
+fn test() {
 
-// async fn get_nodes_latest_resource_version(client: &KubeClient) -> String {
-//    let url = "/api/v1/nodes";
-//    let response = client.get(url).send().await.unwrap();
-//    let nodes_list = response.json::<List<Node>>().await.unwrap();
-//    nodes_list.metadata.resource_version.unwrap()
-// }
+   let mut first = vec![1, 2, 3];
+   let mut second = vec![4, 5, 6];
 
+   println!("first: {first:?}");
+   println!("second: {second:?}");
 
+   std::mem::swap(&mut first, &mut second);
 
-
-
-// pub async fn watch_pods(
-//    client: KubeClient,
-//    version: Box<str>,
-//    template_hash: Box<str>,
-// ) {
-// use k8s_openapi::{
-//    api::core::v1::Pod,
-// };
-//
-// use tokio_util::codec::{FramedRead, LinesCodec};
-//    let mut lines = {
-//       let url = format!("/api/v1/watch/pods?resourceVersion={}&labelSelector=pod-template-hash%3D{}", version, template_hash);
-//       let stream = client
-//          .get(url)
-//          .send()
-//          .await
-//          .unwrap()
-//          .bytes_stream()
-//          .map(|b| b.map_err(std::io::Error::other));
-//
-//       let reader = tokio_util::io::StreamReader::new(stream);
-//       FramedRead::new(reader, LinesCodec::new())
-//    };
-//
-//    while let Some(line) = lines.next().await {
-//       let line = line.unwrap();
-//       let event: WatchEvent<Pod> = serde_json::from_str(&line).unwrap();
-//
-//       match event {
-//          WatchEvent::Added(pod) => {
-//             println!("pod created: {}", pod.metadata.name.unwrap());
-//          },
-//
-//          WatchEvent::Deleted(pod) => {
-//             println!("pod deleted: {}", pod.metadata.name.unwrap());
-//          },
-//          _ => (),
-//       };
-//    };
-//
-//    println!("pods watch for hash `{template_hash}` quitting");
-// }
-
-
-
+   println!("first: {first:?}");
+   println!("second: {second:?}");
+      
+}
 
 #[tokio::main]
 async fn main() {
 
-   
-   
+
+
+
+
    use kube::client::TargetInput;
-   
 
    let client = KubeClient::new().unwrap();
 
+   let t1 = TargetInput::new("default", "stress-test", vec!["stress"]);
 
-   let t1 = TargetInput {
-      containers: vec!["got".into()],
-      deployment_name: "stress-test".into(),
-      namespace: "default".into(),
+   let inputs = vec![t1];
+
+   let results = client.validate.targets(inputs).await;
+
+   let targets = match results {
+      Ok(targets) => targets,
+      Err(error) => return println!("{error}"),
    };
 
+   let nodes = client.get.nodes().await.unwrap();
+   let replica_sets = client.get.replica_sets(&targets).await.unwrap();
+   let pods = client.get.pods(&replica_sets).await.unwrap();
 
-   let ts = vec![t1];
+   let timeout = Duration::from_secs(10);
+   let mut watcher = client.watch.replica_sets(targets, replica_sets, timeout);
 
+   loop {
+      let event = watcher.next_event().await.unwrap();
+      println!("event: {:?}", event);
 
-   client.validate.targets(ts).await.unwrap();
-
-
-   
-
-
-
-
-   // let error = match response {
-   //    Ok(_) => {
-   //       print!("got okay");
-   //       return;
-   //    },
-   //    Err(e) => e,
-   // };
-
-
-
-
-
-   
-   
-
-
-
-
-
-   // let deployment_uuid = initialization::get_deployment_uuid(&client, "default", DEPLOYMENT).await;
-   // let template_hash = initialization::get_replicaset(&client, "default", &deployment_uuid).await;
-   // let (version, pods) = initialization::get_pods_uids(&client, &template_hash).await;
-   // let nodes = initialization::get_nodes_names(&client).await;
-   //
-   //
-   //
-   // watch_pods(client, version, template_hash).await;
-
-   // println!("replicaset {replicaset:?}");
-   // println!("uuid: {deployment_uuid}");
-   return
-
-
-   // let version = get_nodes_latest_resource_version(&client).await;
-
-
-
-   // watch_nodes(client, version).await;
+   };
 
 }
