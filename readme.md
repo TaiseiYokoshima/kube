@@ -58,3 +58,16 @@ pods count
 
 pods:
 ()
+
+
+
+# commands
+access cadvisor endpoint through api proxy:
+kubectl get --raw /api/v1/namespaces/kube-system/pods/cadvisor-<pod-name>/proxy/metrics
+
+port forward to local host:
+kubectl port-forward -n kube-system pod/cadvisor-abc12 8080:8080
+
+
+
+
