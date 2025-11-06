@@ -20,7 +20,7 @@ spec:
       - operator: "Exists"
       containers:
       - name: cadvisor
-        image: gcr.io/google-containers/cadvisor:latest
+        image: gcr.io/cadvisor/cadvisor:v0.47.2
         resources:
           limits:
             cpu: 200m
@@ -40,20 +40,20 @@ spec:
           mountPath: /rootfs
           readOnly: true
 
-        - name: var-run
-          mountPath: /var/run
-          readOnly: false
-
         - name: sys
           mountPath: /sys
           readOnly: true
 
-        - name: docker
-          mountPath: /var/lib/containerd
-          readOnly: true
-
         - name: cgroup
           mountPath: /sys/fs/cgroup
+          readOnly: true
+
+        - name: var-run
+          mountPath: /var/run
+          readOnly: false
+
+        - name: docker
+          mountPath: /var/lib/containerd
           readOnly: true
 
         - name: containerd
@@ -65,21 +65,22 @@ spec:
         hostPath:
           path: /
 
-      - name: var-run
-        hostPath:
-          path: /var/run
-
       - name: sys
         hostPath:
           path: /sys
+
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
 
       - name: docker
         hostPath:
           path: /var/lib/containerd
 
-      - name: cgroup
+      - name: var-run
         hostPath:
-          path: /sys/fs/cgroup
+          path: /var/run
+
 
       - name: containerd
         hostPath:
