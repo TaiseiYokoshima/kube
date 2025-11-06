@@ -20,7 +20,8 @@ spec:
       - operator: "Exists"
       containers:
       - name: cadvisor
-        image: gcr.io/cadvisor/cadvisor:v0.47.2
+        # image: gcr.io/cadvisor/cadvisor:v0.47.2
+        image: gcr.io/cadvisor/cadvisor:latest
         resources:
           limits:
             cpu: 200m
@@ -60,6 +61,15 @@ spec:
           mountPath: /var/lib/rancher/k3s/agent/containerd
           readOnly: true
 
+        - name: k3s-containerd
+          mountPath: /run/k3d/containerd
+          readOnly: true
+
+        - name: k3s-containerd-sock
+          mountPath: /run/containerd/containerd.sock
+          readOnly: true
+
+
       volumes:
       - name: rootfs
         hostPath:
@@ -85,3 +95,12 @@ spec:
       - name: containerd
         hostPath:
           path: /var/lib/rancher/k3s/agent/containerd
+
+      - name: k3s-containerd
+        hostPath: 
+          path: /run/k3d/containerd
+
+      - name: k3s-containerd-sock
+        hostPath:
+          path: /run/k3s/containerd/containerd.sock
+
