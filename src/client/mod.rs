@@ -1,25 +1,16 @@
-mod config;
 mod client;
+mod config;
 
-mod targets;
-mod errors;
-mod replicasets;
-mod nodes;
-mod pods;
+mod daemon_set;
+mod error;
 
-mod get_replicasets;
-mod get_nodes;
-mod get_pods;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Status;
 
-mod validate_targets;
+pub use client::{Base, KubeClient};
+pub use daemon_set::{CAdvisorDaemonSetMetadata, CAdvisorPods, get_daemon_set_pods, Watcher, WatcherError, DaemonSetEvent, Pod};
+pub use error::{APIError, JsonQuery, response_into_error, errors};
 
 
-
-mod watchers;
-
-pub use client::{KubeClient, Base};
-pub use targets::{Target, TargetInput};
-pub use errors::{ClientError, TargetError, ErrorKind};
-pub use replicasets::ReplicaSets;
-pub use nodes::Nodes;
-pub use pods::{Pods, PodSet, NamespaceMap};
+pub type Uid = Box<str>;
+pub type ResourceVersion = Box<str>;
+pub type KubeErrorStatus = Status;

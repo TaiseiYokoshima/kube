@@ -1,0 +1,4 @@
+where_single_line = false
+fn_params_layout = "Vertical"
+brace_style = "AlwaysNextLine"
+tab_spaces = 3

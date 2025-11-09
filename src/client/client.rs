@@ -1,5 +1,14 @@
 use std::rc::Rc;
-use super::{ClientError, ReplicaSets, Nodes, Pods};
+use std::time::Duration;
+
+use super::{
+   Watcher,
+   DaemonSetEvent,
+   CAdvisorDaemonSetMetadata,
+   APIError, 
+   CAdvisorPods
+};
+
 
 #[derive(Debug, Clone)]
 pub struct Base {
@@ -22,24 +31,11 @@ pub struct Get {
 }
 
 impl Get {
-   pub async fn nodes(&self) -> Result<Nodes, ClientError> {
-      use super::get_nodes;
+   pub async fn daemon_set_pods(&self, daemon_set: &CAdvisorDaemonSetMetadata) -> Result<CAdvisorPods, APIError> {
+      use super::daemon_set::get_daemon_set_pods;
       let client = &self.client;
-      get_nodes::get_nodes(client).await
-   }
-   
-   pub async fn replica_sets(&self, targets: &Vec<Target>) -> Result<ReplicaSets, ClientError> {
-      use super::get_replicasets::get_replica_sets;
-      let client = &self.client;
-      get_replica_sets(client, targets).await
-   }
-
-
-   pub async fn pods(&self, replica_sets: &ReplicaSets) -> Result<Pods, ClientError> {
-      use super::get_pods::get_pods;
-
-      let client: &Base = &self.client;
-      get_pods(client, replica_sets).await
+      let result = get_daemon_set_pods(client, daemon_set).await?;
+      Ok(result)
    }
 }
 
@@ -49,40 +45,10 @@ pub struct Watch {
 }
 
 
-use super::watchers::{Watcher, ReplicaSetEvent};
-use k8s_openapi::api::apps::v1::ReplicaSet;
-
-use std::time::Duration;
-
 impl Watch {
-   pub fn replica_sets(&self, targets: Vec<Target>, replica_sets: ReplicaSets, timeout: Duration) -> Watcher<ReplicaSet, ReplicaSetEvent> {
+   pub fn daemon_set_pods(&self, daemon_set: CAdvisorDaemonSetMetadata, state: CAdvisorPods, duration: Duration) -> Watcher<CAdvisorDaemonSetMetadata, DaemonSetEvent> {
       let client = (*self.client).clone();
-      Watcher::new(client, replica_sets, targets, timeout)
-   }
-}
-
-#[derive(Debug, Clone)]
-pub struct Validate {
-   client: Rc<Base>,
-}
-
-use super::{TargetInput, Target};
-
-impl Validate {
-   pub async fn targets(
-       &self,
-      targets: Vec<TargetInput>,
-   ) -> Result<Vec<Target>, ClientError> {
-
-      let client = &self.client;
-
-      use super::validate_targets::validate_targets;
-      let result = validate_targets(client, targets).await?;
-
-      match result {
-         Ok(targets) => Ok(targets),
-         Err(errors) => Err(ClientError::TargetValidationError(errors)),
-      }
+      Watcher::new(client, daemon_set, state, duration)
    }
 }
 
@@ -90,11 +56,10 @@ impl Validate {
 pub struct KubeClient {
    pub get: Get,
    pub watch: Watch,
-   pub validate: Validate,
 }
 
 impl KubeClient {
-   pub fn new() -> Result<Self, ClientError> {
+   pub fn new() -> Result<Self, reqwest::Error> {
 
       use super::config::{read_config, generate_creds};
 
@@ -124,12 +89,10 @@ impl KubeClient {
       let watch = Watch {
          client: base.clone(),
       };
-      let validate = Validate { client: base };
 
       Ok(Self {
          get,
          watch,
-         validate,
       })
    }
 }
