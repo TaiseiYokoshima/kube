@@ -11,14 +11,14 @@ pub use watch::{Watcher, WatcherError, DaemonSetEvent};
 #[derive(Debug, Clone)]
 pub struct Pod {
    uid: Uid,
+   namespace: Box<str>,
    name: Box<str>,
    status: bool,
 }
 
-
 impl Pod {
-   pub fn new(uid: Uid, name: Box<str>, status: bool) -> Self {
-      Self { uid, name, status }
+   pub fn new(uid: Uid, namespace: Box<str>, name: Box<str>, status: bool) -> Self {
+      Self { uid, namespace, name, status }
    }
 }
 

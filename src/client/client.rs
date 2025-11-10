@@ -1,6 +1,8 @@
 use std::rc::Rc;
 use std::time::Duration;
 
+use super::Pod;
+
 use super::{
    Watcher,
    DaemonSetEvent,
@@ -43,6 +45,27 @@ impl Get {
 pub struct Watch {
    pub client: Rc<Base>,
 }
+
+
+#[derive(Debug, Clone)]
+pub struct Proxy {
+   pub client: Rc<Base>,
+}
+
+
+impl Proxy {
+   pub async fn to_pod(&self, pod: &Pod, endpoint: &str) -> reqwest::Response {
+      let client  = &*self.client;
+
+      client.get("/api/v1/namespaces/{}")
+
+
+   }
+
+}
+
+
+
 
 
 impl Watch {

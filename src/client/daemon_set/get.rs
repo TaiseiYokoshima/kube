@@ -25,6 +25,12 @@ pub async fn get_daemon_set_pods(
    let pods = response.json::<List<Pod>>().await?;
    let mut set = Vec::new();
 
+
+
+
+
+
+
    let version = pods
       .metadata
       .resource_version
