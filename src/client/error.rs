@@ -5,12 +5,13 @@ use super::KubeErrorStatus;
 pub enum JsonQuery
 {
    NoUid,
+   NoName,
+   NoNamespace,
    NoMetaData,
    NoResourceVersion,
    NoStatus,
    NoCondition,
    NoReadyCondition,
-   NoName,
 }
 
 #[derive(Debug)]
@@ -63,6 +64,8 @@ impl From<KubeErrorStatus> for APIError
    }
 }
 
+
+
 pub async fn response_into_error(response: reqwest::Response) -> Result<reqwest::Response, APIError>
 {
    if response.status() == reqwest::StatusCode::OK {
@@ -80,11 +83,12 @@ pub async fn response_into_error(response: reqwest::Response) -> Result<reqwest:
 
 pub mod errors {
    use super::{APIError, JsonQuery};
-   pub const ERR_RESOURCE: APIError = APIError::JsonQuery(JsonQuery::NoResourceVersion);
    pub const UID: APIError = APIError::JsonQuery(JsonQuery::NoUid);
+   pub const NAME: APIError = APIError::JsonQuery(JsonQuery::NoName);
+   pub const NAMESPACE: APIError = APIError::JsonQuery(JsonQuery::NoNamespace);
+   pub const RESOURCE_VERSION: APIError = APIError::JsonQuery(JsonQuery::NoResourceVersion);
    pub const STATUS: APIError = APIError::JsonQuery(JsonQuery::NoStatus);
    pub const CONDITION: APIError = APIError::JsonQuery(JsonQuery::NoCondition);
-   pub const READY: APIError = APIError::JsonQuery(JsonQuery::NoReadyCondition);
-   pub const NAME: APIError = APIError::JsonQuery(JsonQuery::NoName);
+   pub const READY_CONDITION: APIError = APIError::JsonQuery(JsonQuery::NoReadyCondition);
 }
 

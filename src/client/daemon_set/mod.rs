@@ -1,4 +1,4 @@
-use super::{APIError, Base, ResourceVersion, Uid, response_into_error, errors};
+use super::{APIError, Base, ResourceVersion, Uid, response_into_error, errors, parse_json_pod};
 
 mod get;
 mod watch;
@@ -10,10 +10,10 @@ pub use watch::{Watcher, WatcherError, DaemonSetEvent};
 
 #[derive(Debug, Clone)]
 pub struct Pod {
-   uid: Uid,
-   namespace: Box<str>,
-   name: Box<str>,
-   status: bool,
+   pub uid: Uid,
+   pub namespace: Box<str>,
+   pub name: Box<str>,
+   pub status: bool,
 }
 
 impl Pod {
@@ -30,7 +30,7 @@ impl std::fmt::Display for Pod {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CAdvisorPods
 {
     pub pods:  Vec<Pod>,

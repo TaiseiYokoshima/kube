@@ -1,12 +1,12 @@
 use std::{collections::HashSet, time::Duration};
 
-use super::{APIError, Base, CAdvisorDaemonSetMetadata, CAdvisorPods, errors, response_into_error, Pod, get_daemon_set_pods};
+use super::{APIError, Base, CAdvisorDaemonSetMetadata, CAdvisorPods, response_into_error, Pod, get_daemon_set_pods, parse_json_pod};
 
 use futures::{StreamExt, future::FutureExt};
 use futures_core::stream::Stream;
 
 use bytes::Bytes;
-use k8s_openapi::{api::core::v1::Pod as JsonPod, apimachinery::pkg::apis::meta::v1::{ObjectMeta, WatchEvent}};
+use k8s_openapi::{api::core::v1::Pod as JsonPod, apimachinery::pkg::apis::meta::v1::{WatchEvent}};
 
 
 #[derive(Debug)]
@@ -242,56 +242,56 @@ async fn get_stream(
 
 
 
-fn parse_pod_object(pod: JsonPod) -> Result<Pod, APIError> {
-   let JsonPod {
-      metadata, status, ..
-   } = pod;
-
-
-   let ObjectMeta {
-      uid, name, ..
-   } = metadata;
-
-   let uid = match uid {
-      Some(uid) => uid,
-      None => return Err(errors::UID),
-   };
-
-   let name = match name {
-      Some(name) => name,
-      None => return Err(errors::NAME),
-   };
-
-
-
-   let status = match status
-      .ok_or(errors::STATUS)
-      .and_then( |x| x.conditions.ok_or(errors::CONDITION))
-      .and_then(|x|
-          x.iter()
-         .find_map(|status| 
-            if status.type_ != "Ready" {
-               None
-            } else {
-               if status.status == "True" {
-                  Some(true)
-               } else {
-                  Some(false)
-               }
-            }
-         ).ok_or(errors::READY)
-      ) {
-         Ok(status) => status,
-         Err(e) => {
-            println!("got {e:?} in parse but fell back to false");
-            false
-         },
-
-      };
-
-
-   Ok(Pod::new(uid.into(), name.into(), status))
-}
+// fn parse_pod_object(pod: JsonPod) -> Result<Pod, APIError> {
+//    let JsonPod {
+//       metadata, status, ..
+//    } = pod;
+//
+//
+//    let ObjectMeta {
+//       uid, name, ..
+//    } = metadata;
+//
+//    let uid = match uid {
+//       Some(uid) => uid,
+//       None => return Err(errors::UID),
+//    };
+//
+//    let name = match name {
+//       Some(name) => name,
+//       None => return Err(errors::NAME),
+//    };
+//
+//
+//
+//    let status = match status
+//       .ok_or(errors::STATUS)
+//       .and_then( |x| x.conditions.ok_or(errors::CONDITION))
+//       .and_then(|x|
+//           x.iter()
+//          .find_map(|status| 
+//             if status.type_ != "Ready" {
+//                None
+//             } else {
+//                if status.status == "True" {
+//                   Some(true)
+//                } else {
+//                   Some(false)
+//                }
+//             }
+//          ).ok_or(errors::READY_CONDITION)
+//       ) {
+//          Ok(status) => status,
+//          Err(e) => {
+//             println!("got {e:?} in parse but fell back to false");
+//             false
+//          },
+//
+//       };
+//
+//
+//    Ok(Pod::new(uid.into(), name.into(), status))
+// }
        
 
 
@@ -403,7 +403,7 @@ pub async fn watch_daemon_set_pods(
          for event in events {
             let event = match event {
                WatchEvent::Added(pod) => {
-                  let pod = match parse_pod_object(pod) {
+                  let pod = match parse_json_pod(pod, "next") {
                      Ok(v) => v,
                      Err(e) => {
                         let _ = sender.send(Err(WatcherError::next(e.into()))).await;
@@ -420,7 +420,7 @@ pub async fn watch_daemon_set_pods(
                },
 
                WatchEvent::Deleted(pod) => {
-                  let pod = match parse_pod_object(pod) {
+                  let pod = match parse_json_pod(pod, "next") {
                      Ok(v) => v,
                      Err(e) => {
                         let _ = sender.send(Err(WatcherError::next(e.into()))).await;
@@ -437,11 +437,11 @@ pub async fn watch_daemon_set_pods(
                },
 
                WatchEvent::Modified(pod) => {
-                  let new = match parse_pod_object(pod) {
+                  let new = match parse_json_pod(pod, "next") {
                      Ok(v) => v,
                      Err(e) => {
                         let _ = sender.send(Err(WatcherError::next(e.into()))).await;
-                        return;
+                        return
                      },
                   };
 

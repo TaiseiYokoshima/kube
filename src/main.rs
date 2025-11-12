@@ -1,5 +1,6 @@
 use kube::client::CAdvisorDaemonSetMetadata;
 use kube::client::KubeClient;
+use kube::metrics::query_cadvisor;
 
 #[tokio::main]
 async fn main()
@@ -22,10 +23,19 @@ async fn main()
 
    let duration = std::time::Duration::from_secs(20);
 
-   let mut watcher = client.watch.daemon_set_pods(set, pods, duration);
+   let mut watcher = client.watch.daemon_set_pods(set, pods.clone(), duration);
 
-   loop {
-      let event = watcher.next().await.unwrap();
-      println!("{event}");
+   // loop {
+   //    let event = watcher.next().await.unwrap();
+   //    println!("{event}");
+   // };
+
+
+   for pod in pods.pods.iter() {
+      println!("{pod}");
+      query_cadvisor(&client, &pod).await;
+      return;
    };
+
+
 }

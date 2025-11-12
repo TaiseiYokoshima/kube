@@ -53,15 +53,24 @@ pub struct Proxy {
 }
 
 
+
+use super::response_into_error;
+
 impl Proxy {
-   pub async fn to_pod(&self, pod: &Pod, endpoint: &str) -> reqwest::Response {
+   pub async fn pod(&self, pod: &Pod, endpoint: &str) -> Result<reqwest::Response, APIError> {
       let client  = &*self.client;
 
-      client.get("/api/v1/namespaces/{}")
+      let Pod {
+         namespace,
+         name,
+         ..
+      } = pod;
 
-
+      let endpoint = format!("/api/v1/namespaces/{namespace}/pods/{name}/proxy/{endpoint}");
+      let response = client.get(endpoint).send().await?;
+      let response = response_into_error(response).await?;
+      Ok(response)
    }
-
 }
 
 
@@ -79,6 +88,7 @@ impl Watch {
 pub struct KubeClient {
    pub get: Get,
    pub watch: Watch,
+   pub proxy: Proxy,
 }
 
 impl KubeClient {
@@ -113,9 +123,14 @@ impl KubeClient {
          client: base.clone(),
       };
 
+      let proxy = Proxy {
+         client: base.clone(),
+      };
+
       Ok(Self {
          get,
          watch,
+         proxy,
       })
    }
 }
