@@ -32,7 +32,7 @@ async fn main()
 
 
    for pod in pods.pods.iter() {
-      println!("{pod}");
+      // println!("{pod}");
       query_cadvisor(&client, &pod).await;
       return;
    };
