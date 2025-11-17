@@ -5,6 +5,8 @@ use kube::metrics::query_cadvisor;
 #[tokio::main]
 async fn main()
 {
+
+
    let client = KubeClient::new().unwrap();
 
    let namespace = "kube-system".into();
