@@ -1,0 +1,20 @@
+container_cpu_usage_seconds_total{
+   container_label_app_kubernetes_io_instance="",
+   container_label_app_kubernetes_io_managed_by="",
+   container_label_app_kubernetes_io_name="",
+   container_label_controller_revision_hash="",
+   container_label_helm_sh_chart="",
+   container_label_io_cri_containerd_kind="container",
+   container_label_io_kubernetes_container_name="cadvisor",
+   container_label_io_kubernetes_pod_name="cadvisor-v7dzs",
+   container_label_io_kubernetes_pod_namespace="kube-system",
+   container_label_io_kubernetes_pod_uid="de7a70bf-5dd6-4952-8c2e-76b468889084",
+   container_label_k8s_app="",
+   container_label_pod_template_generation="",
+   container_label_pod_template_hash="",
+   container_label_svccontroller_k3s_cattle_io_svcname="",
+   cpu="total",
+   id="/kubepods/burstable/podde7a70bf-5dd6-4952-8c2e-76b468889084/2c8750b74d76550b83dde416b335417871ef005d61d9e876a4754d0beba5dfd8",
+   image="gcr.io/cadvisor/cadvisor@sha256:3cde6faf0791ebf7b41d6f8ae7145466fed712ea6f252c935294d2608b1af388",
+   name="2c8750b74d76550b83dde416b335417871ef005d61d9e876a4754d0beba5dfd8"
+} 267.373824 1763488659337
