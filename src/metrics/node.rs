@@ -76,7 +76,7 @@ impl NodeMetricCollector {
          prev = index;
       };
 
-      unreachable!()
+      return 0.0;
    }
 }
 

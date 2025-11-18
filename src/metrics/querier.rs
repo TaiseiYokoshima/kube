@@ -95,35 +95,49 @@ impl QueryTask
       client: &KubeClient,
    ) -> Self
    {
+      println!("querier task created for {} with init state: {}", pod.name, pod.status);
       let pod = pod.clone();
       let client = client.clone();
       let init_state = if pod.status { State::Running } else { State::Paused };
       let (state_updater, mut state_reader) = watch::channel(init_state);
       let task = async move || {
          let pod = pod;
+
+         loop {
+            match *state_reader.borrow_and_update() {
+               State::Killed => return println!("querier killed"),
+               State::Running => break,
+               State::Paused => println!("initial state is paused awaiting state change..."),
+            };
+
+            match state_reader.changed().await {
+               Ok(_) => {
+                  println!("state has changed after intial pause. re-evaluating");
+               },
+               Err(e) => {
+                  println!("Error occured reading state after initial pause. terminating with error:\n{e}");
+                  return;
+               },
+            };
+         };
+
          loop {
             match state_reader.has_changed() {
                Ok(true) => loop {
-                  match state_reader.changed().await {
-                     Err(e) => {
-                        println!("Error from node querying 1:\n{e:?}");
-                        continue;
-                     },
-                     _ => (),
-                  };
-
-                  let new_state = *state_reader.borrow_and_update();
-                  match new_state {
-                     State::Running => break,
-                     State::Killed => return,
-                     _ => continue,
+                  println!();
+                  println!("state has changed");
+                  println!();
+                  match *state_reader.borrow_and_update() {
+                     State::Running => (),
+                     State::Killed => return println!("querier killed"),
+                     State::Paused => continue,
                   };
                },
 
                Ok(false) => (),
                Err(e) => {
                   println!("Error from node querying 2:\n{e:?}");
-                  continue;
+                  return;
                }
             };
 
@@ -131,6 +145,7 @@ impl QueryTask
                Ok(v) => v,
                Err(e) => {
                   println!("Error from node querying 3:\n{e:?}");
+                  tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                   continue;
                }
             };
@@ -139,13 +154,14 @@ impl QueryTask
                Ok(_) => (),
                Err(e) => {
                   println!("Error from node querying 4:\n{e:?}");
-                  continue;
+                  return;
                }
             };
-         }
+         };
       };
 
       let handle = tokio::spawn(task());
+
 
       Self { handle, state_updater }
    }
