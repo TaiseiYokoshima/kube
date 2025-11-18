@@ -23,6 +23,9 @@ pub enum Resource
 #[derive(Debug)]
 pub enum ReceiverError {}
 
+
+use prom_text_format_parser::ScrapeParseError;
+
 #[derive(Debug)]
 pub enum APIError
 {
@@ -30,6 +33,12 @@ pub enum APIError
    Response(KubeErrorStatus),
    JsonParse(serde_json::Error),
    JsonQuery(JsonQuery),
+
+   Prometheus(ScrapeParseError),
+   CPUMetricNotFound,
+   NodeTopLevelContainerMetricNotFound,
+   NodeTopLevelContainerMetricNoTimeStamp,
+
    WatcherEventReceiver
    {
       resource: Resource,
@@ -38,6 +47,13 @@ pub enum APIError
    ChannelReceiverDropped,
    ChannelSenderDropped,
    WatcherTermination,
+}
+
+
+impl From<ScrapeParseError> for APIError {
+   fn from(value: ScrapeParseError) -> Self {
+      Self::Prometheus(value)
+   }
 }
 
 impl From<Error> for APIError

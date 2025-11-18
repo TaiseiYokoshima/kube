@@ -1,6 +1,7 @@
 use kube::client::CAdvisorDaemonSetMetadata;
 use kube::client::KubeClient;
-use kube::metrics::query_cadvisor;
+
+use kube::metrics;
 
 #[tokio::main]
 async fn main()
@@ -13,31 +14,20 @@ async fn main()
    let key = "k8s-app".into();
    let value = "cadvisor".into();
 
-   let set = CAdvisorDaemonSetMetadata {
+   let daemon_set_meta = CAdvisorDaemonSetMetadata {
       key,
       value,
       namespace,
    };
 
-   let pods = client.get.daemon_set_pods(&set).await.unwrap();
+   let daemon_set_state = client.get.daemon_set_pods(&daemon_set_meta).await.unwrap();
+   let metric = metrics::MetricCollector::new(client.clone(), daemon_set_meta, daemon_set_state);
 
-   println!("got pods: {pods}");
-
-   let duration = std::time::Duration::from_secs(20);
-
-   let mut watcher = client.watch.daemon_set_pods(set, pods.clone(), duration);
-
-   // loop {
-   //    let event = watcher.next().await.unwrap();
-   //    println!("{event}");
-   // };
-
-
-   for pod in pods.pods.iter() {
-      // println!("{pod}");
-      query_cadvisor(&client, &pod).await;
-      return;
-   };
-
-
+   match tokio::signal::ctrl_c().await {
+      Ok(_) => (),
+      Err(e) => println!("Error failed to intercept kill signal: {e}"),
+   };  
+   
+   let result = metric.kill().await;
+   println!("got the scrape result");
 }

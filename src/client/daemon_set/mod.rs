@@ -4,7 +4,7 @@ mod get;
 mod watch;
 
 pub use get::get_daemon_set_pods;
-pub use watch::{Watcher, WatcherError, DaemonSetEvent};
+pub use watch::{Watcher, WatcherError, DaemonSetEvent, EventKind};
 
 
 

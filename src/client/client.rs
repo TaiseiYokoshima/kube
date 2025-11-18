@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use super::Pod;
@@ -29,7 +29,7 @@ impl Base {
 
 #[derive(Debug, Clone)]
 pub struct Get {
-   client: Rc<Base>,
+   client: Arc<Base>,
 }
 
 impl Get {
@@ -43,13 +43,13 @@ impl Get {
 
 #[derive(Debug, Clone)]
 pub struct Watch {
-   pub client: Rc<Base>,
+   pub client: Arc<Base>,
 }
 
 
 #[derive(Debug, Clone)]
 pub struct Proxy {
-   pub client: Rc<Base>,
+   pub client: Arc<Base>,
 }
 
 
@@ -84,11 +84,38 @@ impl Watch {
    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct KubeClient {
    pub get: Get,
    pub watch: Watch,
    pub proxy: Proxy,
+}
+
+unsafe impl Send for KubeClient {}
+
+impl Clone for KubeClient {
+   fn clone(&self) -> Self {
+      let base= self.get.client.as_ref();
+      let base = Arc::new(base.clone());
+
+      let get = Get {
+         client: base.clone(),
+      };
+
+      let watch = Watch {
+         client: base.clone(),
+      };
+
+      let proxy = Proxy {
+         client: base.clone(),
+      };
+
+      KubeClient {
+         get,
+         proxy,
+         watch,
+      }
+   }
 }
 
 impl KubeClient {
@@ -114,7 +141,7 @@ impl KubeClient {
          host: host.into(),
       };
 
-      let base = Rc::new(base);
+      let base = Arc::new(base);
 
       let get = Get {
          client: base.clone(),

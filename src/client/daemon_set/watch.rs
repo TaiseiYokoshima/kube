@@ -21,8 +21,8 @@ pub enum EventKind
 #[derive(Debug)]
 pub struct DaemonSetEvent
 {
-   pod: Pod,
-   kind: EventKind,
+   pub pod: Pod,
+   pub kind: EventKind,
 }
 
 
