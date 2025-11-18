@@ -1,4 +1,4 @@
-use prom_text_format_parser::{Scrape, Value};
+use prom_text_format_parser::{Scrape, Value, Sample, Metric};
 
 use tokio::{
    task::JoinHandle,
@@ -27,6 +27,42 @@ pub struct QueryTask
 
 use tokio::sync::mpsc;
 
+fn find_top_level(metric: Metric) -> Result<Sample, APIError> {
+   metric
+      .samples
+      .into_iter()
+      .find(|sample| {
+         sample
+            .labels
+            .iter()
+            .find(|label| label.key == "id" && label.value == "/")
+            .is_some()
+      })
+      .ok_or(APIError::NodeTopLevelContainerMetricNotFound)
+}
+
+fn find_c_advisor(metric: Metric) -> Result<Sample, APIError> {
+   'sample: for sample in metric.samples.into_iter() {
+      for label in sample.labels.iter() {
+         if label.key == "container_label_io_kubernetes_container_name" && label.value !="cadvisor" {
+            continue 'sample;
+         };
+
+         if label.key == "container_label_io_kubernetes_pod_name" && !label.value.starts_with("cadvisor") {
+            continue 'sample;
+         };
+
+         if label.key == "container_label_io_kubernetes_pod_namespace" && label.value != "kube-system" {
+            continue 'sample;
+         };
+      };
+      
+      return Ok(sample);
+   };
+
+   Err(APIError::NodeTopLevelContainerMetricNotFound)
+
+}
 
 #[derive(Debug, Clone)]
 pub struct TopLevelMetric
@@ -46,17 +82,7 @@ impl TryFrom<Scrape> for TopLevelMetric
          .find(|metric| metric.name == "container_cpu_usage_seconds_total")
          .ok_or(APIError::CPUMetricNotFound)?;
 
-      let top_level_metric = cpu_metric
-         .samples
-         .into_iter()
-         .find(|sample| {
-            sample
-               .labels
-               .iter()
-               .find(|label| label.key == "id" && label.value == "/")
-               .is_some()
-         })
-         .ok_or(APIError::NodeTopLevelContainerMetricNotFound)?;
+      let top_level_metric = find_c_advisor(cpu_metric)?;
 
       let value = top_level_metric.value;
       let Value {
